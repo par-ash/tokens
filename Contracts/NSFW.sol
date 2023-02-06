@@ -948,6 +948,7 @@ contract NSFWAI is ERC20, Ownable {
     // TOKENOMICS END ============================================================>
 
     event ExcludedFromFeeUpdated(address _address, bool _status);
+    event Log(address _address, string message);
 
     IUniswapV2Router02 public immutable uniswapV2Router;
     address public uniswapV2Pair;
@@ -1006,17 +1007,17 @@ contract NSFWAI is ERC20, Ownable {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
         require(balanceOf(from) >= amount, "ERC20: transfer amount exceeds balance");
-
+        emit Log(from, "started");
         if ((from == uniswapV2Pair || to == uniswapV2Pair) && !inSwapAndLiquify) {
             if (from != uniswapV2Pair) {
                 uint256 contractLiquidityBalance = balanceOf(address(this)) - _marketingReserves;
                 if (contractLiquidityBalance >= numTokensSellToAddToLiquidity) {
-                    _swapAndLiquify(numTokensSellToAddToLiquidity);
+                    _swapAndLiquify(numTokensSellToAddToLiquidity); // adds to liquidity pool
                 }
                 if ((_marketingReserves) >= numTokensSellToAddToETH) {
                     _swapTokensForEth(numTokensSellToAddToETH);
                     _marketingReserves -= numTokensSellToAddToETH;
-                    bool sent = payable(marketingWallet).send(address(this).balance);
+                    bool sent = payable(marketingWallet).send(address(this).balance); // transfers eth to marketing wallet
                     require(sent, "Failed to send ETH");
                 }
             }
@@ -1051,16 +1052,16 @@ contract NSFWAI is ERC20, Ownable {
     }
 
     function _swapAndLiquify(uint256 contractTokenBalance) private lockTheSwap {
-        uint256 half = (contractTokenBalance / 2);
-        uint256 otherHalf = (contractTokenBalance - half);
+        uint256 half = (contractTokenBalance / 2); //100K
+        uint256 otherHalf = (contractTokenBalance - half); //100K
 
-        uint256 initialBalance = address(this).balance;
+        uint256 initialBalance = address(this).balance; //0.05 ETH
 
-        _swapTokensForEth(half);
+        _swapTokensForEth(half); //100K NSFW <=> 0.03 ETH
 
-        uint256 newBalance = (address(this).balance - initialBalance);
+        uint256 newBalance = (address(this).balance - initialBalance); // 0.08 - 0.05 = 0.03
 
-        _addLiquidity(otherHalf, newBalance);
+        _addLiquidity(otherHalf, newBalance); // add liquidity to marketingWallet pool
 
         emit SwapAndLiquify(half, newBalance, otherHalf);
     }
